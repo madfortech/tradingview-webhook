@@ -109,16 +109,25 @@ def webhook():
 
         signal_upper = signal.upper()
 
+        # =========================
+        # 🧪 EXPERIMENT OPTION TYPE ENGINE
+        # =========================
+        
         if (
             "SELL" in signal_upper or
             "SHORT" in signal_upper or
             "BEAR" in signal_upper or
             "PE" in signal_upper or
             "PUT" in signal_upper or
-            "SUPPLY" in signal_upper or
-            "HEDGE" in signal_upper
+            "SUPPLY" in signal_upper
         ):
             option_type = "PE"
+        
+        # HEDGE SIGNALS
+        elif "HEDGE" in signal_upper:
+        
+            # Keep current market direction
+            option_type = "INFO"
 
         # =========================
         # MARKET DETECTION
@@ -148,6 +157,10 @@ def webhook():
 
             if option_type == "PE":
                 trading_symbol = f"CRUDEOIL SELL {strike}"
+        
+            elif option_type == "INFO":
+                trading_symbol = f"CRUDEOIL HEDGE {strike}"
+        
             else:
                 trading_symbol = f"CRUDEOIL BUY {strike}"
 
