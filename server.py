@@ -2,7 +2,6 @@ from flask import Flask, request
 from SmartApi import SmartConnect
 import requests
 import pyotp
-from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -79,27 +78,7 @@ def get_nifty_spot(obj):
 
     spot = ltp["data"]["ltp"]
 
-    return spot
-
-# ==================================================
-# LIVE WEEKLY EXPIRY
-# ==================================================
-
-def get_expiry():
-
-    today = datetime.now()
-
-    # NIFTY weekly expiry = Tuesday
-    target_weekday = 1
-
-    days_ahead = target_weekday - today.weekday()
-
-    if days_ahead < 0:
-        days_ahead += 7
-
-    expiry = today + timedelta(days=days_ahead)
-
-    return expiry.strftime("%d %b").upper()
+    return float(spot)
 
 # ==================================================
 # OPTION TYPE
@@ -113,7 +92,8 @@ def get_option_type(signal):
         "BEAR",
         "SUPPLY",
         "SHORT",
-        "BREAKDOWN"
+        "BREAKDOWN",
+        "HEDGE"
     ]
 
     for word in bearish_words:
@@ -141,28 +121,53 @@ def safe_value(v):
 
 def get_atm_strike(spot):
 
-    return round(spot / 50) * 50
+    return int(round(spot / 50) * 50)
 
 # ==================================================
-# OPTION SYMBOL
+# LIVE OPTION SYMBOL FETCH
 # ==================================================
 
-def build_option_symbol(
-    expiry,
+def get_live_option_symbol(
+    obj,
     strike,
     option_type
 ):
 
-    expiry_clean = expiry.replace(" ", "")
+    try:
 
-    symbol = (
-        f"NIFTY"
-        f"{expiry_clean}"
-        f"{strike}"
-        f"{option_type}"
-    )
+        search = obj.searchScrip(
+            "NFO",
+            f"NIFTY {strike} {option_type}"
+        )
 
-    return symbol
+        symbols = search["data"]
+
+        option_list = []
+
+        for s in symbols:
+
+            symbol = s.get("symbol", "")
+
+            if (
+                "NIFTY" in symbol and
+                option_type in symbol
+            ):
+
+                option_list.append(symbol)
+
+        option_list.sort()
+
+        if len(option_list) > 0:
+
+            return option_list[0]
+
+        return f"NIFTY {strike} {option_type}"
+
+    except Exception as e:
+
+        print("Option Fetch Error:", e)
+
+        return f"NIFTY {strike} {option_type}"
 
 # ==================================================
 # WEBHOOK
@@ -184,10 +189,6 @@ def webhook():
 
         signal = safe_value(
             data.get("signal", "SIGNAL")
-        )
-
-        symbol = safe_value(
-            data.get("symbol", "NIFTY")
         )
 
         price = safe_value(
@@ -243,17 +244,11 @@ def webhook():
         option_type = get_option_type(signal)
 
         # ==========================================
-        # EXPIRY
+        # LIVE OPTION SYMBOL
         # ==========================================
 
-        expiry = get_expiry()
-
-        # ==========================================
-        # OPTION SYMBOL
-        # ==========================================
-
-        option_symbol = build_option_symbol(
-            expiry,
+        option_symbol = get_live_option_symbol(
+            obj,
             strike,
             option_type
         )
@@ -272,9 +267,6 @@ def webhook():
 
 🎯 Strike:
 {strike}
-
-📅 Expiry:
-{expiry}
 
 📈 Trading Symbol:
 {option_symbol}
