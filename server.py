@@ -59,6 +59,7 @@ last_signal = ""
 def home():
 return "🚀 TradingView Webhook Running"
 
+
 # =====================================
 
 # 🚨 WEBHOOK
