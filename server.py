@@ -12,11 +12,8 @@ app = Flask(__name__)
 # =====================================
 
 API_KEY = "6mZMklIr"
-
 CLIENT_CODE = "JANAK4986"
-
 MPIN = "1989"
-
 TOTP_SECRET = "KBUFFEP4QAVYBR6OPRPWZSYORI"
 
 smartApi = SmartConnect(api_key=API_KEY)
@@ -36,7 +33,6 @@ print("\n✅ ANGEL LOGIN SUCCESS")
 # =====================================
 
 BOT_TOKEN = "8325376679:AAEMAlcnYitaJiPGZFjch6wUWAYGLLBOjr4"
-
 CHAT_ID = "7826747633"
 
 # =====================================
@@ -65,7 +61,7 @@ def webhook():
     try:
 
         # =====================================
-        # 📩 RAW TRADINGVIEW DATA
+        # 📩 RAW DATA
         # =====================================
 
         raw_data = request.data.decode("utf-8").strip()
@@ -76,20 +72,38 @@ def webhook():
         print("==========================\n")
 
         # =====================================
-        # 🧠 JSON PARSE
+        # 🧠 SAFE JSON PARSE
         # =====================================
 
-        data = json.loads(raw_data)
+        try:
+            data = json.loads(raw_data)
 
-        signal = data.get("signal", "SIGNAL")
+        except json.JSONDecodeError:
 
-        symbol = data.get("symbol", "NIFTY")
+            print("❌ JSON PARSE FAILED")
+            print(raw_data)
 
-        price = float(data.get("price", 0))
+            return "bad json", 400
 
-        time_now = data.get(
-            "time",
-            datetime.now().strftime("%d-%b-%Y %H:%M:%S IST")
+        # =====================================
+        # 📊 DATA EXTRACTION
+        # =====================================
+
+        signal = str(data.get("signal", "SIGNAL"))
+
+        symbol = str(data.get("symbol", "NIFTY"))
+
+        # SAFE PRICE CONVERSION
+        try:
+            price = float(data.get("price", 0))
+        except:
+            price = 0
+
+        time_now = str(
+            data.get(
+                "time",
+                datetime.now().strftime("%d-%b-%Y %H:%M:%S IST")
+            )
         )
 
         # =====================================
@@ -112,12 +126,16 @@ def webhook():
 
         option_type = "CE"
 
+        signal_upper = signal.upper()
+
         if (
-            "BEAR" in signal or
-            "PUT" in signal or
-            "PE" in signal or
-            "HEDGE" in signal or
-            "SUPPLY" in signal
+            "BEAR" in signal_upper or
+            "PUT" in signal_upper or
+            "PE" in signal_upper or
+            "SELL" in signal_upper or
+            "SHORT" in signal_upper or
+            "HEDGE" in signal_upper or
+            "SUPPLY" in signal_upper
         ):
             option_type = "PE"
 
@@ -152,7 +170,7 @@ def webhook():
         print(telegram_message)
 
         # =====================================
-        # 📡 TELEGRAM SEND
+        # 📡 SEND TELEGRAM
         # =====================================
 
         telegram_url = (
@@ -173,6 +191,10 @@ def webhook():
         print("\n✅ TELEGRAM RESPONSE:")
         print(response.text)
 
+        # =====================================
+        # ✅ SUCCESS
+        # =====================================
+
         return "ok", 200
 
     except Exception as e:
@@ -187,4 +209,8 @@ def webhook():
 # =====================================
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+
+    app.run(
+        host="0.0.0.0",
+        port=5000
+    )
