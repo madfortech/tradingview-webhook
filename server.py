@@ -3,14 +3,11 @@ import json
 import requests
 from datetime import datetime
 
-# OPTIONAL SMART API LOGIN
-
 try:
-
-```
 from SmartApi import SmartConnect
 import pyotp
 
+```
 API_KEY = "YOUR_API_KEY"
 CLIENT_CODE = "YOUR_CLIENT_CODE"
 MPIN = "YOUR_MPIN"
@@ -26,46 +23,22 @@ session = smartApi.generateSession(
     totp
 )
 
-print("✅ SMART API LOGIN SUCCESS")
+print("SMART API LOGIN SUCCESS")
 ```
 
 except Exception as e:
 
 ```
-print("❌ SMART API LOGIN FAILED")
+print("SMART API LOGIN FAILED")
 print(str(e))
 ```
 
-# =====================================
-
-# 🚀 FLASK APP
-
-# =====================================
-
 app = Flask(**name**)
-
-# =====================================
-
-# 🔐 TELEGRAM
-
-# =====================================
 
 BOT_TOKEN = "8325376679:AAEMAlcnYitaJiPGZFjch6wUWAYGLLBOjr4"
 CHAT_ID = "7826747633"
 
-# =====================================
-
-# 🚫 DUPLICATE FILTER
-
-# =====================================
-
 last_signal = ""
-
-# =====================================
-
-# 🏠 HOME ROUTE
-
-# =====================================
 
 @app.route("/")
 def home():
@@ -73,12 +46,6 @@ def home():
 ```
 return "TradingView Webhook Running"
 ```
-
-# =====================================
-
-# 🚨 WEBHOOK
-
-# =====================================
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -88,20 +55,9 @@ global last_signal
 
 try:
 
-    # =====================================
-    # 📩 RAW DATA
-    # =====================================
-
     raw_data = request.data.decode("utf-8").strip()
 
-    print("\n==========================")
-    print("📩 RAW WEBHOOK")
     print(raw_data)
-    print("==========================\n")
-
-    # =====================================
-    # 🧠 JSON PARSE
-    # =====================================
 
     try:
 
@@ -109,14 +65,9 @@ try:
 
     except Exception as e:
 
-        print("❌ JSON ERROR")
         print(str(e))
 
         return "bad json", 400
-
-    # =====================================
-    # 📊 DATA EXTRACTION
-    # =====================================
 
     signal = str(
         data.get("signal", "SIGNAL")
@@ -126,25 +77,28 @@ try:
         data.get("symbol", "NIFTY")
     )
 
-    # PRICE
     try:
+
         price = float(
             data.get("price", 0)
         )
+
     except:
+
         price = 0
 
-    # STRIKE
     try:
+
         strike = int(
             float(
                 data.get("strike", 0)
             )
         )
+
     except:
+
         strike = 0
 
-    # TIME
     time_now = str(
         data.get(
             "time",
@@ -154,25 +108,15 @@ try:
         )
     )
 
-    # =====================================
-    # 🚫 DUPLICATE BLOCKER
-    # =====================================
-
     current_key = (
         f"{signal}_{symbol}_{strike}_{time_now}"
     )
 
     if current_key == last_signal:
 
-        print("⚠️ DUPLICATE BLOCKED")
-
         return "duplicate", 200
 
     last_signal = current_key
-
-    # =====================================
-    # 🎯 OPTION TYPE DETECT
-    # =====================================
 
     option_type = "CE"
 
@@ -189,10 +133,6 @@ try:
     ):
 
         option_type = "PE"
-
-    # =====================================
-    # 🌍 MARKET DETECTION
-    # =====================================
 
     symbol_upper = symbol.upper()
 
@@ -218,10 +158,6 @@ try:
 
         market_type = "CRUDE"
 
-    # =====================================
-    # 📈 TRADING SYMBOL
-    # =====================================
-
     if market_type == "CRUDE":
 
         if option_type == "PE":
@@ -244,16 +180,10 @@ try:
             f"{option_type}"
         )
 
-    # =====================================
-    # 📩 TELEGRAM MESSAGE
-    # =====================================
-
     telegram_message = f"""
 ```
 
 🚨 {signal}
-
-📊 AUTO MARKET SIGNAL
 
 🌍 Market : {market_type}
 
@@ -267,13 +197,6 @@ try:
 """
 
 ```
-    print("\n📤 TELEGRAM MESSAGE")
-    print(telegram_message)
-
-    # =====================================
-    # 📡 SEND TELEGRAM
-    # =====================================
-
     telegram_url = (
         f"https://api.telegram.org/bot"
         f"{BOT_TOKEN}/sendMessage"
@@ -290,24 +213,16 @@ try:
         timeout=10
     )
 
-    print("\n✅ TELEGRAM RESPONSE")
     print(response.text)
 
     return "ok", 200
 
 except Exception as e:
 
-    print("\n❌ WEBHOOK ERROR")
     print(str(e))
 
     return str(e), 500
 ```
-
-# =====================================
-
-# 🚀 START SERVER
-
-# =====================================
 
 if **name** == "**main**":
 
