@@ -3,7 +3,7 @@ import json
 import requests
 from datetime import datetime
 
-app = Flask(**name**)
+app = Flask(__name__)
 
 BOT_TOKEN = "8325376679:AAEMAlcnYitaJiPGZFjch6wUWAYGLLBOjr4"
 CHAT_ID = "7826747633"
