@@ -82,14 +82,15 @@ def get_nifty_spot(obj):
     return spot
 
 # ==================================================
-# AUTO WEEKLY EXPIRY
+# AUTO WEEKLY EXPIRY (TUESDAY)
 # ==================================================
 
 def get_expiry():
 
     today = datetime.now()
 
-    target_weekday = 3  # Thursday
+    # Tuesday expiry
+    target_weekday = 1
 
     days_ahead = target_weekday - today.weekday()
 
