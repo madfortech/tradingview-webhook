@@ -5,9 +5,7 @@ import requests
 import json
 from datetime import datetime
 
-app = Flask(name)
-
-
+app = Flask(**name**)
 
 # =====================================
 
@@ -30,7 +28,7 @@ MPIN,
 totp
 )
 
-print("\n✅ ANGEL LOGIN SUCCESS")
+print("✅ ANGEL LOGIN SUCCESS")
 
 # =====================================
 
@@ -51,14 +49,16 @@ last_signal = ""
 
 # =====================================
 
-# 🏠 HOME
+# 🏠 HOME ROUTE
 
 # =====================================
 
 @app.route("/")
 def home():
-return "🚀 TradingView Webhook Running"
 
+```
+return "TradingView Webhook Running"
+```
 
 # =====================================
 
@@ -80,10 +80,10 @@ try:
 
     raw_data = request.data.decode("utf-8").strip()
 
-    print("\n==========================")
-    print("📩 RAW WEBHOOK:")
+    print("==========================")
+    print("RAW WEBHOOK:")
     print(raw_data)
-    print("==========================\n")
+    print("==========================")
 
     # =====================================
     # 🧠 SAFE JSON PARSE
@@ -92,10 +92,9 @@ try:
     try:
         data = json.loads(raw_data)
 
-    except json.JSONDecodeError:
+    except Exception as e:
 
-        print("❌ JSON PARSE FAILED")
-        print(raw_data)
+        print("JSON ERROR:", str(e))
 
         return "bad json", 400
 
@@ -115,7 +114,7 @@ try:
     time_now = str(
         data.get(
             "time",
-            datetime.now().strftime("%d-%b-%Y %H:%M:%S IST")
+            datetime.now().strftime("%d-%b-%Y %H:%M:%S")
         )
     )
 
@@ -127,7 +126,7 @@ try:
 
     if current_key == last_signal:
 
-        print("⚠️ DUPLICATE BLOCKED")
+        print("DUPLICATE BLOCKED")
 
         return "duplicate blocked", 200
 
@@ -150,6 +149,7 @@ try:
         "HEDGE" in signal_upper or
         "SUPPLY" in signal_upper
     ):
+
         option_type = "PE"
 
     # =====================================
@@ -161,22 +161,27 @@ try:
     market_type = "NIFTY"
 
     if "BANKNIFTY" in symbol_upper:
+
         market_type = "BANKNIFTY"
 
     elif "FINNIFTY" in symbol_upper:
+
         market_type = "FINNIFTY"
 
     elif "SENSEX" in symbol_upper:
+
         market_type = "SENSEX"
 
     elif "BANKEX" in symbol_upper:
+
         market_type = "BANKEX"
 
     elif "CRUDE" in symbol_upper:
+
         market_type = "CRUDE"
 
     # =====================================
-    # 🎯 AUTO STRIKE LOGIC
+    # 🎯 STRIKE + SYMBOL LOGIC
     # =====================================
 
     if market_type == "BANKNIFTY":
@@ -260,7 +265,7 @@ try:
 """
 
 ```
-    print("\n📤 TELEGRAM MESSAGE:")
+    print("TELEGRAM MESSAGE:")
     print(telegram_message)
 
     # =====================================
@@ -282,17 +287,17 @@ try:
         timeout=10
     )
 
-    print("\n✅ TELEGRAM RESPONSE:")
+    print("TELEGRAM RESPONSE:")
     print(response.text)
 
     return "ok", 200
 
 except Exception as e:
 
-    print("\n❌ WEBHOOK ERROR")
+    print("WEBHOOK ERROR:")
     print(str(e))
 
-    return f"error: {str(e)}", 500
+    return str(e), 500
 ```
 
 # =====================================
