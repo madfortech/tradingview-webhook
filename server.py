@@ -1,3 +1,4 @@
+```python
 from flask import Flask, request
 from SmartApi import SmartConnect
 import pyotp
@@ -76,6 +77,7 @@ def webhook():
         # =====================================
 
         try:
+
             data = json.loads(raw_data)
 
         except json.JSONDecodeError:
@@ -93,7 +95,7 @@ def webhook():
 
         symbol = str(data.get("symbol", "NIFTY"))
 
-        # SAFE PRICE CONVERSION
+        # SAFE PRICE
         try:
             price = float(data.get("price", 0))
         except:
@@ -140,28 +142,111 @@ def webhook():
             option_type = "PE"
 
         # =====================================
-        # 🎯 AUTO STRIKE
+        # 🌍 MARKET DETECTION
         # =====================================
 
-        strike = round(price / 50) * 50
+        symbol_upper = symbol.upper()
 
-        trading_symbol = f"NIFTY {strike} {option_type}"
+        market_type = "NIFTY"
+
+        # ===== BANKNIFTY =====
+        if "BANKNIFTY" in symbol_upper:
+            market_type = "BANKNIFTY"
+
+        # ===== FINNIFTY =====
+        elif "FINNIFTY" in symbol_upper:
+            market_type = "FINNIFTY"
+
+        # ===== SENSEX =====
+        elif "SENSEX" in symbol_upper:
+            market_type = "SENSEX"
+
+        # ===== BANKEX =====
+        elif "BANKEX" in symbol_upper:
+            market_type = "BANKEX"
+
+        # ===== CRUDE =====
+        elif "CRUDE" in symbol_upper:
+            market_type = "CRUDE"
 
         # =====================================
-        # 🧾 TELEGRAM MESSAGE
+        # 🎯 AUTO STRIKE LOGIC
+        # =====================================
+
+        if market_type == "BANKNIFTY":
+
+            strike = round(price / 100) * 100
+
+            trading_symbol = (
+                f"BANKNIFTY {strike} {option_type}"
+            )
+
+        elif market_type == "FINNIFTY":
+
+            strike = round(price / 50) * 50
+
+            trading_symbol = (
+                f"FINNIFTY {strike} {option_type}"
+            )
+
+        elif market_type == "SENSEX":
+
+            strike = round(price / 100) * 100
+
+            trading_symbol = (
+                f"SENSEX {strike} {option_type}"
+            )
+
+        elif market_type == "BANKEX":
+
+            strike = round(price / 100) * 100
+
+            trading_symbol = (
+                f"BANKEX {strike} {option_type}"
+            )
+
+        elif market_type == "CRUDE":
+
+            strike = round(price / 100) * 100
+
+            if option_type == "PE":
+
+                trading_symbol = (
+                    f"CRUDEOIL SELL {strike}"
+                )
+
+            else:
+
+                trading_symbol = (
+                    f"CRUDEOIL BUY {strike}"
+                )
+
+        else:
+
+            strike = round(price / 50) * 50
+
+            trading_symbol = (
+                f"NIFTY {strike} {option_type}"
+            )
+
+        # =====================================
+        # 📩 TELEGRAM MESSAGE
         # =====================================
 
         telegram_message = f"""
 🚨 {signal}
 
-📊 AUTO OPTION SIGNAL
+📊 AUTO MARKET SIGNAL
+
+🌍 Market : {market_type}
 
 🎯 Option Type : {option_type}
-🎯 Strike      : {strike}
 
-📈 Symbol      : {trading_symbol}
+🎯 Strike : {strike}
 
-💰 Live Spot   : {round(price, 2)}
+📈 Symbol : {trading_symbol}
+
+💰 Live Price : {round(price, 2)}
 
 ⏰ Time : {time_now}
 """
@@ -214,3 +299,4 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=5000
     )
+```
