@@ -82,7 +82,7 @@ def get_nifty_spot(obj):
     return spot
 
 # ==================================================
-# LIVE EXPIRY FETCH
+# LIVE WEEKLY EXPIRY
 # ==================================================
 
 def get_expiry():
@@ -136,7 +136,7 @@ def safe_value(v):
     return str(v)
 
 # ==================================================
-# AUTO STRIKE ENGINE
+# ATM STRIKE
 # ==================================================
 
 def get_atm_strike(spot):
@@ -144,7 +144,7 @@ def get_atm_strike(spot):
     return round(spot / 50) * 50
 
 # ==================================================
-# EXACT OPTION SYMBOL
+# OPTION SYMBOL
 # ==================================================
 
 def build_option_symbol(
@@ -243,7 +243,7 @@ def webhook():
         option_type = get_option_type(signal)
 
         # ==========================================
-        # LIVE EXPIRY
+        # EXPIRY
         # ==========================================
 
         expiry = get_expiry()
@@ -267,14 +267,17 @@ def webhook():
 
 📊 AUTO OPTION SIGNAL
 
-🎯 Option:
-{option_symbol}
+🎯 Option Type:
+{option_type}
 
 🎯 Strike:
-NIFTY {strike} {option_type}
+{strike}
 
 📅 Expiry:
 {expiry}
+
+📈 Trading Symbol:
+{option_symbol}
 
 💰 Live Spot:
 {spot}
@@ -330,7 +333,7 @@ NIFTY {strike} {option_type}
 
 def home():
 
-    return "TradingView Webhook Running"
+    return "TradingView Webhook Running Successfully"
 
 # ==================================================
 # RUN SERVER
