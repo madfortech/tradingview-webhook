@@ -3,3 +3,4 @@ requests
 gunicorn
 smartapi-python
 pyotp
+logzero
