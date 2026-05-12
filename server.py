@@ -3,36 +3,6 @@ import json
 import requests
 from datetime import datetime
 
-try:
-from SmartApi import SmartConnect
-import pyotp
-
-```
-API_KEY = "YOUR_API_KEY"
-CLIENT_CODE = "YOUR_CLIENT_CODE"
-MPIN = "YOUR_MPIN"
-TOTP_SECRET = "YOUR_TOTP_SECRET"
-
-smartApi = SmartConnect(api_key=API_KEY)
-
-totp = pyotp.TOTP(TOTP_SECRET).now()
-
-session = smartApi.generateSession(
-    CLIENT_CODE,
-    MPIN,
-    totp
-)
-
-print("SMART API LOGIN SUCCESS")
-```
-
-except Exception as e:
-
-```
-print("SMART API LOGIN FAILED")
-print(str(e))
-```
-
 app = Flask(**name**)
 
 BOT_TOKEN = "8325376679:AAEMAlcnYitaJiPGZFjch6wUWAYGLLBOjr4"
@@ -42,10 +12,7 @@ last_signal = ""
 
 @app.route("/")
 def home():
-
-```
 return "TradingView Webhook Running"
-```
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -57,63 +24,32 @@ try:
 
     raw_data = request.data.decode("utf-8").strip()
 
-    print(raw_data)
+    data = json.loads(raw_data)
+
+    signal = str(data.get("signal", "SIGNAL"))
+
+    symbol = str(data.get("symbol", "NIFTY"))
 
     try:
-
-        data = json.loads(raw_data)
-
-    except Exception as e:
-
-        print(str(e))
-
-        return "bad json", 400
-
-    signal = str(
-        data.get("signal", "SIGNAL")
-    )
-
-    symbol = str(
-        data.get("symbol", "NIFTY")
-    )
-
-    try:
-
-        price = float(
-            data.get("price", 0)
-        )
-
+        price = float(data.get("price", 0))
     except:
-
         price = 0
 
     try:
-
-        strike = int(
-            float(
-                data.get("strike", 0)
-            )
-        )
-
+        strike = int(float(data.get("strike", 0)))
     except:
-
         strike = 0
 
     time_now = str(
         data.get(
             "time",
-            datetime.now().strftime(
-                "%d-%b-%Y %H:%M:%S"
-            )
+            datetime.now().strftime("%d-%b-%Y %H:%M:%S")
         )
     )
 
-    current_key = (
-        f"{signal}_{symbol}_{strike}_{time_now}"
-    )
+    current_key = f"{signal}_{symbol}_{strike}_{time_now}"
 
     if current_key == last_signal:
-
         return "duplicate", 200
 
     last_signal = current_key
@@ -131,7 +67,6 @@ try:
         "SUPPLY" in signal_upper or
         "HEDGE" in signal_upper
     ):
-
         option_type = "PE"
 
     symbol_upper = symbol.upper()
@@ -139,38 +74,27 @@ try:
     market_type = "NIFTY"
 
     if "BANKNIFTY" in symbol_upper:
-
         market_type = "BANKNIFTY"
 
     elif "FINNIFTY" in symbol_upper:
-
         market_type = "FINNIFTY"
 
     elif "SENSEX" in symbol_upper:
-
         market_type = "SENSEX"
 
     elif "BANKEX" in symbol_upper:
-
         market_type = "BANKEX"
 
     elif "CRUDE" in symbol_upper:
-
         market_type = "CRUDE"
 
     if market_type == "CRUDE":
 
         if option_type == "PE":
-
-            trading_symbol = (
-                f"CRUDEOIL SELL {strike}"
-            )
+            trading_symbol = f"CRUDEOIL SELL {strike}"
 
         else:
-
-            trading_symbol = (
-                f"CRUDEOIL BUY {strike}"
-            )
+            trading_symbol = f"CRUDEOIL BUY {strike}"
 
     else:
 
@@ -225,10 +149,4 @@ except Exception as e:
 ```
 
 if **name** == "**main**":
-
-```
-app.run(
-    host="0.0.0.0",
-    port=5000
-)
-```
+app.run(host="0.0.0.0", port=5000)
