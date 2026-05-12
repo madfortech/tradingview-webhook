@@ -82,16 +82,18 @@ def get_nifty_spot(obj):
     return spot
 
 # ==================================================
-# AUTO EXPIRY
+# AUTO WEEKLY EXPIRY
 # ==================================================
 
 def get_expiry():
 
     today = datetime.now()
 
-    days_ahead = 3 - today.weekday()
+    target_weekday = 3  # Thursday
 
-    if days_ahead <= 0:
+    days_ahead = target_weekday - today.weekday()
+
+    if days_ahead < 0:
         days_ahead += 7
 
     expiry = today + timedelta(days=days_ahead)
@@ -99,7 +101,7 @@ def get_expiry():
     return expiry.strftime("%d %b").upper()
 
 # ==================================================
-# OPTION TYPE
+# AUTO OPTION TYPE
 # ==================================================
 
 def get_option_type(signal):
@@ -109,7 +111,8 @@ def get_option_type(signal):
         "PUT",
         "BEAR",
         "SUPPLY",
-        "SHORT"
+        "SHORT",
+        "BREAKDOWN"
     ]
 
     for word in bearish_words:
@@ -119,6 +122,17 @@ def get_option_type(signal):
             return "PE"
 
     return "CE"
+
+# ==================================================
+# SAFE VALUE FUNCTION
+# ==================================================
+
+def safe_value(v):
+
+    if v in [None, "", "na", "nan"]:
+        return "N/A"
+
+    return str(v)
 
 # ==================================================
 # WEBHOOK ROUTE
@@ -136,13 +150,43 @@ def webhook():
 
         data = request.json
 
-        signal = data.get("signal", "SIGNAL")
+        print("Webhook Data:", data)
 
-        entry = data.get("entry", "0")
+        signal = safe_value(
+            data.get("signal", "SIGNAL")
+        )
 
-        sl = data.get("sl", "0")
+        symbol = safe_value(
+            data.get("symbol", "NIFTY")
+        )
 
-        tp1 = data.get("tp1", "0")
+        price = safe_value(
+            data.get("price", "0")
+        )
+
+        entry = safe_value(
+            data.get("entry", "0")
+        )
+
+        sl = safe_value(
+            data.get("sl", "0")
+        )
+
+        tp1 = safe_value(
+            data.get("tp1", "0")
+        )
+
+        tp2 = safe_value(
+            data.get("tp2", "0")
+        )
+
+        tp3 = safe_value(
+            data.get("tp3", "0")
+        )
+
+        signal_time = safe_value(
+            data.get("time", "")
+        )
 
         # ==========================================
         # ANGEL LOGIN
@@ -189,17 +233,29 @@ NIFTY {strike} {option_type}
 📅 Expiry:
 {expiry}
 
-💰 Spot:
+💰 Live Spot:
 {spot}
 
-💵 Entry:
+💵 Price:
+{price}
+
+🎯 Entry:
 {entry}
 
 🛑 Stop Loss:
 {sl}
 
-🎯 Target:
+🎯 TP1:
 {tp1}
+
+🎯 TP2:
+{tp2}
+
+🎯 TP3:
+{tp3}
+
+⏰ Time:
+{signal_time}
 """
 
         print(final_message)
@@ -222,6 +278,16 @@ NIFTY {strike} {option_type}
             "status": "error",
             "message": str(e)
         }
+
+# ==================================================
+# HOME ROUTE
+# ==================================================
+
+@app.route('/')
+
+def home():
+
+    return "Webhook Running Successfully"
 
 # ==================================================
 # RUN SERVER
