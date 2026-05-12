@@ -1,34 +1,48 @@
 from flask import Flask, request
-from SmartApi import SmartConnect
-import pyotp
-import requests
 import json
+import requests
 from datetime import datetime
 
-app = Flask(**name**)
+# OPTIONAL SMART API LOGIN
 
-# =====================================
+try:
 
-# 🔐 ANGEL ONE LOGIN
+```
+from SmartApi import SmartConnect
+import pyotp
 
-# =====================================
-
-API_KEY = "6mZMklIr"
-CLIENT_CODE = "JANAK4986"
-MPIN = "1989"
-TOTP_SECRET = "KBUFFEP4QAVYBR6OPRPWZSYORI"
+API_KEY = "YOUR_API_KEY"
+CLIENT_CODE = "YOUR_CLIENT_CODE"
+MPIN = "YOUR_MPIN"
+TOTP_SECRET = "YOUR_TOTP_SECRET"
 
 smartApi = SmartConnect(api_key=API_KEY)
 
 totp = pyotp.TOTP(TOTP_SECRET).now()
 
 session = smartApi.generateSession(
-CLIENT_CODE,
-MPIN,
-totp
+    CLIENT_CODE,
+    MPIN,
+    totp
 )
 
-print("✅ ANGEL LOGIN SUCCESS")
+print("✅ SMART API LOGIN SUCCESS")
+```
+
+except Exception as e:
+
+```
+print("❌ SMART API LOGIN FAILED")
+print(str(e))
+```
+
+# =====================================
+
+# 🚀 FLASK APP
+
+# =====================================
+
+app = Flask(**name**)
 
 # =====================================
 
@@ -80,21 +94,23 @@ try:
 
     raw_data = request.data.decode("utf-8").strip()
 
-    print("==========================")
-    print("RAW WEBHOOK:")
+    print("\n==========================")
+    print("📩 RAW WEBHOOK")
     print(raw_data)
-    print("==========================")
+    print("==========================\n")
 
     # =====================================
-    # 🧠 SAFE JSON PARSE
+    # 🧠 JSON PARSE
     # =====================================
 
     try:
+
         data = json.loads(raw_data)
 
     except Exception as e:
 
-        print("JSON ERROR:", str(e))
+        print("❌ JSON ERROR")
+        print(str(e))
 
         return "bad json", 400
 
@@ -102,19 +118,39 @@ try:
     # 📊 DATA EXTRACTION
     # =====================================
 
-    signal = str(data.get("signal", "SIGNAL"))
+    signal = str(
+        data.get("signal", "SIGNAL")
+    )
 
-    symbol = str(data.get("symbol", "NIFTY"))
+    symbol = str(
+        data.get("symbol", "NIFTY")
+    )
 
+    # PRICE
     try:
-        price = float(data.get("price", 0))
+        price = float(
+            data.get("price", 0)
+        )
     except:
         price = 0
 
+    # STRIKE
+    try:
+        strike = int(
+            float(
+                data.get("strike", 0)
+            )
+        )
+    except:
+        strike = 0
+
+    # TIME
     time_now = str(
         data.get(
             "time",
-            datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+            datetime.now().strftime(
+                "%d-%b-%Y %H:%M:%S"
+            )
         )
     )
 
@@ -122,13 +158,15 @@ try:
     # 🚫 DUPLICATE BLOCKER
     # =====================================
 
-    current_key = f"{signal}_{symbol}_{price}_{time_now}"
+    current_key = (
+        f"{signal}_{symbol}_{strike}_{time_now}"
+    )
 
     if current_key == last_signal:
 
-        print("DUPLICATE BLOCKED")
+        print("⚠️ DUPLICATE BLOCKED")
 
-        return "duplicate blocked", 200
+        return "duplicate", 200
 
     last_signal = current_key
 
@@ -141,13 +179,13 @@ try:
     signal_upper = signal.upper()
 
     if (
-        "BEAR" in signal_upper or
-        "PUT" in signal_upper or
-        "PE" in signal_upper or
         "SELL" in signal_upper or
         "SHORT" in signal_upper or
-        "HEDGE" in signal_upper or
-        "SUPPLY" in signal_upper
+        "BEAR" in signal_upper or
+        "PE" in signal_upper or
+        "PUT" in signal_upper or
+        "SUPPLY" in signal_upper or
+        "HEDGE" in signal_upper
     ):
 
         option_type = "PE"
@@ -181,44 +219,10 @@ try:
         market_type = "CRUDE"
 
     # =====================================
-    # 🎯 STRIKE + SYMBOL LOGIC
+    # 📈 TRADING SYMBOL
     # =====================================
 
-    if market_type == "BANKNIFTY":
-
-        strike = round(price / 100) * 100
-
-        trading_symbol = (
-            f"BANKNIFTY {strike} {option_type}"
-        )
-
-    elif market_type == "FINNIFTY":
-
-        strike = round(price / 50) * 50
-
-        trading_symbol = (
-            f"FINNIFTY {strike} {option_type}"
-        )
-
-    elif market_type == "SENSEX":
-
-        strike = round(price / 100) * 100
-
-        trading_symbol = (
-            f"SENSEX {strike} {option_type}"
-        )
-
-    elif market_type == "BANKEX":
-
-        strike = round(price / 100) * 100
-
-        trading_symbol = (
-            f"BANKEX {strike} {option_type}"
-        )
-
-    elif market_type == "CRUDE":
-
-        strike = round(price / 100) * 100
+    if market_type == "CRUDE":
 
         if option_type == "PE":
 
@@ -234,10 +238,10 @@ try:
 
     else:
 
-        strike = round(price / 50) * 50
-
         trading_symbol = (
-            f"NIFTY {strike} {option_type}"
+            f"{market_type} "
+            f"{strike} "
+            f"{option_type}"
         )
 
     # =====================================
@@ -253,8 +257,6 @@ try:
 
 🌍 Market : {market_type}
 
-🎯 Option Type : {option_type}
-
 🎯 Strike : {strike}
 
 📈 Symbol : {trading_symbol}
@@ -265,7 +267,7 @@ try:
 """
 
 ```
-    print("TELEGRAM MESSAGE:")
+    print("\n📤 TELEGRAM MESSAGE")
     print(telegram_message)
 
     # =====================================
@@ -273,7 +275,8 @@ try:
     # =====================================
 
     telegram_url = (
-        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        f"https://api.telegram.org/bot"
+        f"{BOT_TOKEN}/sendMessage"
     )
 
     payload = {
@@ -287,14 +290,14 @@ try:
         timeout=10
     )
 
-    print("TELEGRAM RESPONSE:")
+    print("\n✅ TELEGRAM RESPONSE")
     print(response.text)
 
     return "ok", 200
 
 except Exception as e:
 
-    print("WEBHOOK ERROR:")
+    print("\n❌ WEBHOOK ERROR")
     print(str(e))
 
     return str(e), 500
