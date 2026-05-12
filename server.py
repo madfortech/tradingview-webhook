@@ -65,10 +65,10 @@ def webhook():
     try:
 
         # =====================================
-        # 📩 RAW DATA
+        # 📩 RAW TRADINGVIEW DATA
         # =====================================
 
-        raw_data = request.data.decode("utf-8")
+        raw_data = request.data.decode("utf-8").strip()
 
         print("\n==========================")
         print("📩 RAW WEBHOOK:")
@@ -96,7 +96,7 @@ def webhook():
         # 🚫 DUPLICATE BLOCKER
         # =====================================
 
-        current_key = f"{signal}_{symbol}_{price}"
+        current_key = f"{signal}_{symbol}_{price}_{time_now}"
 
         if current_key == last_signal:
 
@@ -143,7 +143,7 @@ def webhook():
 
 📈 Symbol      : {trading_symbol}
 
-💰 Live Spot   : {price}
+💰 Live Spot   : {round(price, 2)}
 
 ⏰ Time : {time_now}
 """
@@ -152,7 +152,7 @@ def webhook():
         print(telegram_message)
 
         # =====================================
-        # 📡 SEND TELEGRAM
+        # 📡 TELEGRAM SEND
         # =====================================
 
         telegram_url = (
