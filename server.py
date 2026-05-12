@@ -35,9 +35,9 @@ print("\n✅ ANGEL LOGIN SUCCESS")
 # 🔐 TELEGRAM
 # =====================================
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
+BOT_TOKEN = "8325376679:AAEMAlcnYitaJiPGZFjch6wUWAYGLLBOjr4"
 
-CHAT_ID = "YOUR_CHAT_ID"
+CHAT_ID = "7826747633"
 
 # =====================================
 # 🚫 DUPLICATE FILTER
