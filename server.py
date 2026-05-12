@@ -12,7 +12,8 @@ last_signal = ""
 
 @app.route("/")
 def home():
-    return "TradingView Webhook Running"
+    return "🚀 TradingView Webhook Running"
+
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -23,22 +24,64 @@ def webhook():
 
         raw_data = request.data.decode("utf-8").strip()
 
+        print("RAW WEBHOOK DATA:")
         print(raw_data)
 
         data = json.loads(raw_data)
 
+        # =========================
+        # SIGNAL DATA
+        # =========================
+
         signal = str(data.get("signal", "SIGNAL"))
         symbol = str(data.get("symbol", "NIFTY"))
+
+        # =========================
+        # PRICE
+        # =========================
 
         try:
             price = float(data.get("price", 0))
         except:
             price = 0
 
+        # =========================
+        # STRIKE
+        # =========================
+
         try:
             strike = int(float(data.get("strike", 0)))
         except:
             strike = 0
+
+        # =========================
+        # ENTRY / SL / TARGET
+        # =========================
+
+        try:
+            entry = float(data.get("entry", 0))
+        except:
+            entry = 0
+
+        try:
+            sl = float(data.get("sl", 0))
+        except:
+            sl = 0
+
+        try:
+            target = float(data.get("target", 0))
+        except:
+            target = 0
+
+        # =========================
+        # TIMEFRAME
+        # =========================
+
+        timeframe = str(data.get("timeframe", ""))
+
+        # =========================
+        # TIME
+        # =========================
 
         time_now = str(
             data.get(
@@ -47,12 +90,20 @@ def webhook():
             )
         )
 
+        # =========================
+        # DUPLICATE FILTER
+        # =========================
+
         current_key = f"{signal}_{symbol}_{strike}_{time_now}"
 
         if current_key == last_signal:
             return "duplicate", 200
 
         last_signal = current_key
+
+        # =========================
+        # OPTION TYPE DETECTION
+        # =========================
 
         option_type = "CE"
 
@@ -69,6 +120,10 @@ def webhook():
         ):
             option_type = "PE"
 
+        # =========================
+        # MARKET DETECTION
+        # =========================
+
         symbol_upper = symbol.upper()
 
         market_type = "NIFTY"
@@ -82,11 +137,12 @@ def webhook():
         elif "SENSEX" in symbol_upper:
             market_type = "SENSEX"
 
-        elif "BANKEX" in symbol_upper:
-            market_type = "BANKEX"
-
         elif "CRUDE" in symbol_upper:
             market_type = "CRUDE"
+
+        # =========================
+        # TRADING SYMBOL
+        # =========================
 
         if market_type == "CRUDE":
 
@@ -103,6 +159,10 @@ def webhook():
                 f"{option_type}"
             )
 
+        # =========================
+        # TELEGRAM MESSAGE
+        # =========================
+
         telegram_message = f"""
 🚨 {signal}
 
@@ -112,10 +172,22 @@ def webhook():
 
 📈 Symbol : {trading_symbol}
 
+🕒 TF : {timeframe}
+
+📈 Entry : {entry}
+
+🛑 SL : {sl}
+
+🎯 Target : {target}
+
 💰 Live Price : {round(price, 2)}
 
 ⏰ Time : {time_now}
 """
+
+        # =========================
+        # TELEGRAM API
+        # =========================
 
         telegram_url = (
             f"https://api.telegram.org/bot"
@@ -133,14 +205,18 @@ def webhook():
             timeout=10
         )
 
+        print("TELEGRAM RESPONSE:")
         print(response.text)
 
         return "ok", 200
 
     except Exception as e:
 
+        print("ERROR:")
         print(str(e))
+
         return str(e), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
