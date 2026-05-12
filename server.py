@@ -113,8 +113,10 @@ def get_atm_strike(spot):
 # ==================================================
 
 def get_option_type(signal):
-    bearish_words = ["SELL", "PUT", "BEAR", "SUPPLY", "SHORT",
-                     "BREAKDOWN", "HEDGE", "SUPPLY ZONE"]
+    bearish_words = [
+        "SELL", "PUT", "BEAR", "SUPPLY", "SHORT",
+        "BREAKDOWN", "HEDGE", "SUPPLY ZONE", "CONFIRM"
+    ]
     for word in bearish_words:
         if word in signal.upper():
             return "PE"
@@ -136,11 +138,11 @@ def get_live_option_symbol(obj, strike, option_type):
         filtered = [
             s.get("symbol", "")
             for s in symbols
-            if "NIFTY" in s.get("symbol", "")
+            if "NIFTY"      in s.get("symbol", "")
             and option_type in s.get("symbol", "")
-            and "BANKNIFTY"   not in s.get("symbol", "")
-            and "FINNIFTY"    not in s.get("symbol", "")
-            and "MIDCPNIFTY"  not in s.get("symbol", "")
+            and "BANKNIFTY"  not in s.get("symbol", "")
+            and "FINNIFTY"   not in s.get("symbol", "")
+            and "MIDCPNIFTY" not in s.get("symbol", "")
         ]
 
         if not filtered:
@@ -164,61 +166,101 @@ def safe_value(v):
 
 def safe_float(v):
     try:
-        return float(v)
+        import math
+        f = float(v)
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return f
     except:
         return None
 
 # ==================================================
-# FIX PE ENTRY / SL / TP
-#
-# TradingView Pine Script sends CE-side values
-# for spot price (entry/sl/tp are Nifty index levels).
-# For PE option, when Nifty goes DOWN, PE goes UP.
-# So we recalculate targets correctly for PE.
-#
-# Logic:
-#   entry_f  = Nifty spot at signal time
-#   For PE:  market should go DOWN
-#   SL       = entry + risk (above entry)
-#   TP1/2/3  = entry - risk*RR (below entry)
+# IS HEDGE SIGNAL CHECK
 # ==================================================
 
-def fix_pe_levels(entry, sl, tp1, tp2, tp3, option_type, spot):
+def is_hedge_signal(signal):
+    hedge_words = ["HEDGE", "BREAKDOWN", "CONFIRM", "BEAR", "SUPPLY"]
+    for word in hedge_words:
+        if word in signal.upper():
+            return True
+    return False
+
+# ==================================================
+# CALCULATE LEVELS FROM SPOT
+# Jab Pine Script na/0 bheje ya hedge signal ho
+# ==================================================
+
+def calculate_levels_from_spot(spot, option_type, risk_pct=0.002):
+    risk = spot * risk_pct  # 0.2% of spot
+
+    if option_type == "PE":
+        entry_val = round(spot, 2)
+        sl_val    = round(spot + risk, 2)
+        tp1_val   = round(spot - risk * 0.9, 2)
+        tp2_val   = round(spot - risk * 1.6, 2)
+        tp3_val   = round(spot - risk * 2.5, 2)
+    else:
+        entry_val = round(spot, 2)
+        sl_val    = round(spot - risk, 2)
+        tp1_val   = round(spot + risk * 0.9, 2)
+        tp2_val   = round(spot + risk * 1.6, 2)
+        tp3_val   = round(spot + risk * 2.5, 2)
+
+    return (
+        str(entry_val),
+        str(sl_val),
+        str(tp1_val),
+        str(tp2_val),
+        str(tp3_val)
+    )
+
+# ==================================================
+# VALIDATE AND FIX LEVELS
+# 4 cases handle karta hai:
+# 1. Hedge signal      → spot se fresh calculate
+# 2. NA / None / 0    → spot se fresh calculate
+# 3. PE mein TP upar  → fix karo
+# 4. Sab sahi         → as-is return
+# ==================================================
+
+def validate_and_fix_levels(entry, sl, tp1, tp2, tp3, option_type, spot, signal):
+
     entry_f = safe_float(entry)
     sl_f    = safe_float(sl)
     tp1_f   = safe_float(tp1)
     tp2_f   = safe_float(tp2)
     tp3_f   = safe_float(tp3)
 
+    # CASE 1: Hedge/Bear signal — always recalculate
+    if is_hedge_signal(signal):
+        logger.info(f"Hedge signal → recalculating from spot: {spot}")
+        return calculate_levels_from_spot(spot, option_type="PE")
+
+    # CASE 2: NA / None / 0 values
     if None in [entry_f, sl_f, tp1_f, tp2_f, tp3_f]:
-        return entry, sl, tp1, tp2, tp3
+        logger.info("NA values → recalculating from spot")
+        return calculate_levels_from_spot(spot, option_type)
 
-    if option_type == "PE":
-        # Use spot as real entry reference
-        ref = spot if spot else entry_f
+    if entry_f == 0 or sl_f == 0:
+        logger.info("Zero values → recalculating from spot")
+        return calculate_levels_from_spot(spot, option_type)
 
-        # Risk = distance TradingView gave as SL
-        # (original SL was above entry for CE — use that gap as risk)
-        risk = abs(sl_f - entry_f)
-        if risk < 1:
-            risk = ref * 0.002  # fallback: 0.2% of spot
+    # CASE 3: PE signal mein TP galat side pe hai
+    if option_type == "PE" and tp1_f is not None and entry_f is not None:
+        if tp1_f > entry_f:
+            logger.info("PE signal with CE-side TP → fixing")
+            risk = abs((sl_f or 0) - entry_f)
+            if risk < 1:
+                risk = spot * 0.002
+            return (
+                str(round(spot, 2)),
+                str(round(spot + risk, 2)),
+                str(round(spot - risk * 0.9, 2)),
+                str(round(spot - risk * 1.6, 2)),
+                str(round(spot - risk * 2.5, 2))
+            )
 
-        # PE correct levels: market goes DOWN
-        real_entry = ref
-        real_sl    = round(ref + risk, 2)        # SL above spot
-        real_tp1   = round(ref - risk * 0.9, 2)  # TP1 below
-        real_tp2   = round(ref - risk * 1.6, 2)  # TP2 further
-        real_tp3   = round(ref - risk * 2.5, 2)  # TP3 furthest
-
-        return (
-            str(real_entry),
-            str(real_sl),
-            str(real_tp1),
-            str(real_tp2),
-            str(real_tp3)
-        )
-
-    # CE — return as-is
+    # CASE 4: Sab theek hai
     return entry, sl, tp1, tp2, tp3
 
 # ==================================================
@@ -236,21 +278,21 @@ def webhook():
 
         # ---- Parse fields ----
         signal = safe_value(data.get("signal", "SIGNAL"))
-        price  = safe_value(data.get("price", "0"))
-        entry  = safe_value(data.get("entry", "0"))
-        sl     = safe_value(data.get("sl", "0"))
-        tp1    = safe_value(data.get("tp1", "0"))
-        tp2    = safe_value(data.get("tp2", "0"))
-        tp3    = safe_value(data.get("tp3", "0"))
+        price  = safe_value(data.get("price",  "0"))
+        entry  = safe_value(data.get("entry",  "0"))
+        sl     = safe_value(data.get("sl",     "0"))
+        tp1    = safe_value(data.get("tp1",    "0"))
+        tp2    = safe_value(data.get("tp2",    "0"))
+        tp3    = safe_value(data.get("tp3",    "0"))
 
         # ---- DUPLICATE CHECK ----
-        # Use signal + rounded price as unique key
-        signal_key = f"{signal}_{round(safe_float(price) or 0, -1)}"
+        price_rounded = round(safe_float(price) or 0, -1)
+        signal_key = f"{signal}_{price_rounded}"
         if is_duplicate(signal_key):
             logger.info(f"Duplicate blocked: {signal_key}")
             return {"status": "duplicate", "message": "blocked"}, 200
 
-        # ---- IST Time (ignore TradingView time) ----
+        # ---- IST Time ----
         ist_time = get_ist_time()
 
         # ---- Angel One ----
@@ -260,12 +302,13 @@ def webhook():
         option_type   = get_option_type(signal)
         option_symbol = get_live_option_symbol(obj, strike, option_type)
 
-        # ---- Fix PE levels ----
-        entry, sl, tp1, tp2, tp3 = fix_pe_levels(
-            entry, sl, tp1, tp2, tp3, option_type, spot
+        # ---- Validate and Fix Levels ----
+        entry, sl, tp1, tp2, tp3 = validate_and_fix_levels(
+            entry, sl, tp1, tp2, tp3,
+            option_type, spot, signal
         )
 
-        # ---- Telegram message ----
+        # ---- Telegram Message ----
         message = (
             f"🚨 {signal}\n\n"
             f"📊 AUTO OPTION SIGNAL\n\n"
