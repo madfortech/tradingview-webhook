@@ -55,7 +55,7 @@ def angel_login():
 
     totp = pyotp.TOTP(TOTP_SECRET).now()
 
-    session = obj.generateSession(
+    obj.generateSession(
         CLIENT_ID,
         PASSWORD,
         totp
@@ -82,14 +82,14 @@ def get_nifty_spot(obj):
     return spot
 
 # ==================================================
-# AUTO WEEKLY EXPIRY (TUESDAY)
+# LIVE EXPIRY FETCH
 # ==================================================
 
 def get_expiry():
 
     today = datetime.now()
 
-    # Tuesday expiry
+    # NIFTY weekly expiry = Tuesday
     target_weekday = 1
 
     days_ahead = target_weekday - today.weekday()
@@ -102,7 +102,7 @@ def get_expiry():
     return expiry.strftime("%d %b").upper()
 
 # ==================================================
-# AUTO OPTION TYPE
+# OPTION TYPE
 # ==================================================
 
 def get_option_type(signal):
@@ -125,7 +125,7 @@ def get_option_type(signal):
     return "CE"
 
 # ==================================================
-# SAFE VALUE FUNCTION
+# SAFE VALUE
 # ==================================================
 
 def safe_value(v):
@@ -136,7 +136,36 @@ def safe_value(v):
     return str(v)
 
 # ==================================================
-# WEBHOOK ROUTE
+# AUTO STRIKE ENGINE
+# ==================================================
+
+def get_atm_strike(spot):
+
+    return round(spot / 50) * 50
+
+# ==================================================
+# EXACT OPTION SYMBOL
+# ==================================================
+
+def build_option_symbol(
+    expiry,
+    strike,
+    option_type
+):
+
+    expiry_clean = expiry.replace(" ", "")
+
+    symbol = (
+        f"NIFTY"
+        f"{expiry_clean}"
+        f"{strike}"
+        f"{option_type}"
+    )
+
+    return symbol
+
+# ==================================================
+# WEBHOOK
 # ==================================================
 
 @app.route('/webhook', methods=['POST'])
@@ -202,10 +231,10 @@ def webhook():
         spot = get_nifty_spot(obj)
 
         # ==========================================
-        # AUTO ATM STRIKE
+        # ATM STRIKE
         # ==========================================
 
-        strike = round(spot / 50) * 50
+        strike = get_atm_strike(spot)
 
         # ==========================================
         # OPTION TYPE
@@ -214,19 +243,32 @@ def webhook():
         option_type = get_option_type(signal)
 
         # ==========================================
-        # AUTO EXPIRY
+        # LIVE EXPIRY
         # ==========================================
 
         expiry = get_expiry()
 
         # ==========================================
-        # FINAL TELEGRAM MESSAGE
+        # OPTION SYMBOL
+        # ==========================================
+
+        option_symbol = build_option_symbol(
+            expiry,
+            strike,
+            option_type
+        )
+
+        # ==========================================
+        # TELEGRAM MESSAGE
         # ==========================================
 
         final_message = f"""
 🚨 {signal}
 
 📊 AUTO OPTION SIGNAL
+
+🎯 Option:
+{option_symbol}
 
 🎯 Strike:
 NIFTY {strike} {option_type}
@@ -281,14 +323,14 @@ NIFTY {strike} {option_type}
         }
 
 # ==================================================
-# HOME ROUTE
+# HOME
 # ==================================================
 
 @app.route('/')
 
 def home():
 
-    return "Webhook Running Successfully"
+    return "TradingView Webhook Running"
 
 # ==================================================
 # RUN SERVER
