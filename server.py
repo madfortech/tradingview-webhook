@@ -1,19 +1,58 @@
-from flask import Flask, request
-import json
+from flask import Flask, request, jsonify
 import requests
+import json
+import time
 from datetime import datetime
+from threading import Thread
 
 app = Flask(__name__)
+
+# =========================
+# TELEGRAM CONFIG
+# =========================
 
 BOT_TOKEN = "8325376679:AAEMAlcnYitaJiPGZFjch6wUWAYGLLBOjr4"
 CHAT_ID = "7826747633"
 
+# =========================
+# DUPLICATE MEMORY
+# =========================
+
 last_signal = ""
+
+# =========================
+# HOME ROUTE
+# =========================
 
 @app.route("/")
 def home():
     return "🚀 TradingView Webhook Running"
 
+# =========================
+# TELEGRAM SENDER
+# =========================
+
+def send_telegram_message(payload, telegram_url):
+
+    try:
+
+        response = requests.post(
+            telegram_url,
+            json=payload,
+            timeout=5
+        )
+
+        print("✅ TELEGRAM SENT")
+        print(response.text)
+
+    except Exception as e:
+
+        print("❌ TELEGRAM ERROR")
+        print(str(e))
+
+# =========================
+# WEBHOOK
+# =========================
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -22,15 +61,25 @@ def webhook():
 
     try:
 
+        # =========================
+        # RAW DATA
+        # =========================
+
         raw_data = request.data.decode("utf-8").strip()
 
-        print("RAW WEBHOOK DATA:")
+        print("\n==============================")
+        print("📩 NEW WEBHOOK RECEIVED")
+        print("==============================")
         print(raw_data)
+
+        # =========================
+        # JSON PARSE
+        # =========================
 
         data = json.loads(raw_data)
 
         # =========================
-        # SIGNAL DATA
+        # SIGNAL
         # =========================
 
         signal = str(data.get("signal", "SIGNAL"))
@@ -77,7 +126,7 @@ def webhook():
         # TIMEFRAME
         # =========================
 
-        timeframe = str(data.get("timeframe", ""))
+        timeframe = str(data.get("timeframe", "5m"))
 
         # =========================
         # TIME
@@ -94,25 +143,26 @@ def webhook():
         # DUPLICATE FILTER
         # =========================
 
-        current_key = f"{signal}_{symbol}_{strike}_{time_now}"
+        current_key = f"{signal}_{symbol}_{strike}_{round(price,2)}"
 
         if current_key == last_signal:
-            return "duplicate", 200
+
+            print("⚠️ DUPLICATE ALERT BLOCKED")
+
+            return jsonify({
+                "status": "duplicate"
+            }), 200
 
         last_signal = current_key
 
         # =========================
-        # OPTION TYPE DETECTION
+        # OPTION TYPE
         # =========================
 
         option_type = "CE"
 
         signal_upper = signal.upper()
 
-        # =========================
-        # 🧪 EXPERIMENT OPTION TYPE ENGINE
-        # =========================
-        
         if (
             "SELL" in signal_upper or
             "SHORT" in signal_upper or
@@ -121,12 +171,11 @@ def webhook():
             "PUT" in signal_upper or
             "SUPPLY" in signal_upper
         ):
+
             option_type = "PE"
-        
-        # HEDGE SIGNALS
+
         elif "HEDGE" in signal_upper:
-        
-            # Keep current market direction
+
             option_type = "INFO"
 
         # =========================
@@ -156,12 +205,15 @@ def webhook():
         if market_type == "CRUDE":
 
             if option_type == "PE":
+
                 trading_symbol = f"CRUDEOIL SELL {strike}"
-        
+
             elif option_type == "INFO":
+
                 trading_symbol = f"CRUDEOIL HEDGE {strike}"
-        
+
             else:
+
                 trading_symbol = f"CRUDEOIL BUY {strike}"
 
         else:
@@ -212,24 +264,41 @@ def webhook():
             "text": telegram_message
         }
 
-        response = requests.post(
-            telegram_url,
-            json=payload,
-            timeout=10
-        )
+        # =========================
+        # BACKGROUND THREAD
+        # =========================
 
-        print("TELEGRAM RESPONSE:")
-        print(response.text)
+        Thread(
+            target=send_telegram_message,
+            args=(payload, telegram_url)
+        ).start()
 
-        return "ok", 200
+        # =========================
+        # INSTANT RESPONSE
+        # =========================
+
+        return jsonify({
+            "status": "success"
+        }), 200
 
     except Exception as e:
 
-        print("ERROR:")
+        print("\n❌ WEBHOOK ERROR")
         print(str(e))
 
-        return str(e), 500
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
+# =========================
+# MAIN
+# =========================
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        threaded=True
+    )
